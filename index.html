@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Clock</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        #datetime-container {
+            text-align: center;
+        }
+
+        .light-theme {
+            background-color: #f0f0f0;
+            color: #333333;
+        }
+
+        .dark-theme {
+            background-color: #333333;
+            color: #f0f0f0;
+        }
+
+        #time-display {
+            font-size: 3em;
+            font-weight: bold;
+        }
+
+        #date-display {
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div id="datetime-container">
+        <p id="date-display"></p>
+        <p id="time-display"></p>
+    </div>
+    <script>
+        const dateDisplay = document.getElementById('date-display');
+        const timeDisplay = document.getElementById('time-display');
+        const body = document.body;
+
+        function updateClock() {
+            const now = new Date();
+
+            // Format date
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+            dateDisplay.textContent = now.toLocaleDateString(undefined, dateOptions);
+
+            // Format time
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            timeDisplay.textContent = now.toLocaleTimeString(undefined, timeOptions);
+
+            // Theme switching
+            const currentHour = now.getHours();
+            if (currentHour >= 6 && currentHour < 18) { // Daytime
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+            } else { // Nighttime
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+            }
+        }
+
+        // Initial call to set date, time, and theme
+        updateClock();
+
+        // Update the clock every second
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
