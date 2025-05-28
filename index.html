@@ -37,17 +37,92 @@
         #date-display {
             font-size: 1.5em;
         }
+
+        #sunrise-time, #sunset-time {
+            font-size: 1.1em; 
+        }
+
+        #sunrise-time {
+            margin-top: 10px;
+        }
+        
+        #sunset-time {
+            margin-top: 5px; /* Or remove if only sunrise-time is used for errors and spacing */
+        }
     </style>
 </head>
 <body>
     <div id="datetime-container">
         <p id="date-display"></p>
         <p id="time-display"></p>
+        <p id="sunrise-time"></p>
+        <p id="sunset-time"></p>
     </div>
     <script>
         const dateDisplay = document.getElementById('date-display');
         const timeDisplay = document.getElementById('time-display');
+        const sunriseDisplay = document.getElementById('sunrise-time');
+        const sunsetDisplay = document.getElementById('sunset-time');
         const body = document.body;
+
+        let sunriseTime = null;
+        let sunsetTime = null;
+
+        function successCallback(position) {
+            console.log("Geolocation successful:", position);
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            const apiUrl = `https://api.sunrise-sunset.org/json?lat=${latitude}&lng=${longitude}&formatted=0`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.results && data.status === "OK") {
+                        sunriseTime = new Date(data.results.sunrise);
+                        sunsetTime = new Date(data.results.sunset);
+
+                        const timeFormatOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+                        sunriseDisplay.textContent = `Sunrise: ${sunriseTime.toLocaleTimeString(undefined, timeFormatOptions)}`;
+                        sunsetDisplay.textContent = `Sunset: ${sunsetTime.toLocaleTimeString(undefined, timeFormatOptions)}`;
+                        
+                        updateClock(); // Update theme based on new sunrise/sunset times
+                    } else {
+                        console.error("Error from sunrise-sunset API:", data.status);
+                        sunriseDisplay.textContent = "Sunrise/sunset times unavailable: Could not fetch data.";
+                        sunsetDisplay.textContent = "";
+                        sunriseTime = null; // Ensure fallback
+                        sunsetTime = null;  // Ensure fallback
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching sunrise-sunset data:", error);
+                    sunriseDisplay.textContent = "Sunrise/sunset times unavailable: Could not fetch data.";
+                    sunsetDisplay.textContent = "";
+                    sunriseTime = null; // Ensure fallback
+                    sunsetTime = null;  // Ensure fallback
+                });
+        }
+
+        function errorCallback(error) {
+            console.error("Error getting location:", error);
+            sunriseDisplay.textContent = "Sunrise/sunset times unavailable: Location access failed or denied.";
+            sunsetDisplay.textContent = "";
+            sunriseTime = null; 
+            sunsetTime = null;
+            // Theme will default to 6 AM/6 PM logic in updateClock
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+        } else {
+            console.log("Geolocation is not supported by this browser.");
+            sunriseDisplay.textContent = "Sunrise/sunset times unavailable: Geolocation not supported.";
+            sunsetDisplay.textContent = "";
+            sunriseTime = null;
+            sunsetTime = null;
+            // Theme will default to 6 AM/6 PM logic in updateClock
+        }
 
         function updateClock() {
             const now = new Date();
@@ -61,17 +136,31 @@
             timeDisplay.textContent = now.toLocaleTimeString(undefined, timeOptions);
 
             // Theme switching
-            const currentHour = now.getHours();
-            if (currentHour >= 6 && currentHour < 18) { // Daytime
-                body.classList.remove('dark-theme');
-                body.classList.add('light-theme');
-            } else { // Nighttime
-                body.classList.remove('light-theme');
-                body.classList.add('dark-theme');
+            if (sunriseTime && sunsetTime) {
+                // Use sunrise/sunset times if available
+                if (now >= sunriseTime && now < sunsetTime) { // Daytime
+                    body.classList.remove('dark-theme');
+                    body.classList.add('light-theme');
+                } else { // Nighttime
+                    body.classList.remove('light-theme');
+                    body.classList.add('dark-theme');
+                }
+            } else { 
+                // Fallback to time-based theme if geolocation fails or data not yet fetched
+                const currentHour = now.getHours();
+                if (currentHour >= 6 && currentHour < 18) { // Daytime (6 AM to 6 PM)
+                    body.classList.remove('dark-theme');
+                    body.classList.add('light-theme');
+                } else { // Nighttime
+                    body.classList.remove('light-theme');
+                    body.classList.add('dark-theme');
+                }
             }
         }
 
         // Initial call to set date, time, and theme
+        // Geolocation is asynchronous, so updateClock() will run before location is known.
+        // Theme will initially be set by time, then potentially updated in successCallback.
         updateClock();
 
         // Update the clock every second
